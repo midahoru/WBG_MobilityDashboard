@@ -1,2 +1,2 @@
 # WBG_MobilityDashboard
-Dashboard build with Dash for Python to visualize a set of mobility indicators.
+Tablero de control desarrollado en Dash para Python para visualizar los datos de las matrices de origen y destino generadas por Nummon con datos de telefonía celular. 
