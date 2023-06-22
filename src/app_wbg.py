@@ -7,12 +7,15 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
+#%%
 # Base de datos
-df = pd.read_parquet("../assets/odmatrix_gped_no_pro.parquet")
+df = pd.read_parquet("../assets/odmatrix_filt.parquet")
     
 # ZATs
 with open('../assets/BTA_ZAT.geojson') as jsonfile:
     geo_zat = json.load(jsonfile)
+
+#%%
     
 colores = {
     'fondo': '#FFFFFF',
@@ -33,16 +36,16 @@ c_res = "residencia"
 c_prop = "proposito"
 c_modo = "modo"
 c_viajes = "viajes"
-c_prof = "profesional"
+# c_prof = "profesional"
 c_rango_dist="rango_dist"
 
 # Opciones generales
 anios_dispo = sorted(df[c_anio].unique())
 
 # ToDo arreglar para que pueda leer todos los meses del año
-meses_dispo = ["mar", "oct"]
-meses_dispo_label = ["Marzo", "Octubre"]
-dd_meses = [{"label":x, "value":y} for x,y in zip(meses_dispo_label, meses_dispo)]
+# meses_dispo = ["oct"]
+# meses_dispo_label = ["Marzo", "Octubre"]
+# dd_meses = [{"label":x, "value":y} for x,y in zip(meses_dispo_label, meses_dispo)]
 
 tipo_dia_dispo = sorted(df[c_tipo_dia].unique())
 dd_tipo_dia = [{"label":"Laborable", "value":"lab"}, {"label":"Sábado", "value":"sab"}, {"label":"Domingo", "value":"dom"}]
@@ -61,9 +64,10 @@ dd_prop =  [{"label":x, "value":y} for x,y in zip(prop_dispo, prop_val)]
 
 rangos_dist = ["[0-0.5)", "[0.5-1)", "[1-2)", "[2-5)", "[5-10)", "[10-20)", "[20-50)","+50"]
 
+#%%
+
 # Inicializa la app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-server = app.server
 
 encabezado = dbc.Row([
     dbc.Col([
@@ -74,7 +78,7 @@ encabezado = dbc.Row([
                     'width': '100%', 'display': 'inline-block'
                       },
                    className="bg-primary text-white p-2 mb-2 text-center"),
-        html.Img(src=app.get_asset_url('WBG_Logo.png'), 
+        html.Img(src=app.get_asset_url('../assets/WBG_Logo.png'), 
                  style={'height': 60,'width': '15%','display': 'inline-block',
                         'position':'absolute', 'left':0})],
         style={'position': 'relative'})    
@@ -106,15 +110,15 @@ filtros_1 = dbc.Row([
 
 filtros_2 = dbc.Row([
     # Mes
-    dbc.Col([
-        html.P("Mes", style={'marginBottom':5}),
-        dcc.Dropdown(options=dd_meses,
-                     value="oct",
-                     multi=False,
-                     placeholder="Mes",
-                     id='dd-mes'),
-    ], width=2, className="fs-6"
-    ),
+    # dbc.Col([
+    #     html.P("Mes", style={'marginBottom':5}),
+    #     dcc.Dropdown(options=dd_meses,
+    #                  value="oct",
+    #                  multi=False,
+    #                  placeholder="Mes",
+    #                  id='dd-mes'),
+    # ], width=2, className="fs-6"
+    # ),
     # Propósito
     dbc.Col([
         html.P("Propósito", style={'marginBottom':5}),
@@ -125,6 +129,12 @@ filtros_2 = dbc.Row([
                      id='dd-prop'),
     ], width={"size": 5}, className="fs-6"
     ), # Fin Col Propósito
+    dbc.Col([
+        dbc.Card([
+            html.P(id="num-viajes-filt")
+            ], body=True)
+        ], width=3, align="end",
+        className=".text-primary text-center font-weight-bold fs-3 border-0 bg-transparent"),
     # Filtrar
     dbc.Col([
         html.P("", style={'marginBottom':5}),
@@ -159,23 +169,14 @@ controles_od = dbc.Card([
     html.Div([
         dcc.Checklist(
            options=[
-               {'label': 'Comparar', 'value': 'Si'}
-           ]
+               {'label': 'Comparar',
+                'value': 'Si'}
+           ],
+           id = "check_comp"
         )
     ]),
     
-    html.Div([
-        dcc.Dropdown(multi=False, #options, #value #disable
-                     placeholder="Año base",
-                     disabled = True,
-                     id='dd-v-anio-base'),
-        
-        dcc.Dropdown(multi=False,
-                     placeholder="Año de comparación",
-                     disabled = True,
-                     id='dd-v-anio-comparacion')
-    ]),
-    
+    html.Div(id='div-dd-v-anios-comp'),  
     html.Div([
         dbc.Label("Rangos"),
         dcc.Input(type="text",
@@ -198,7 +199,7 @@ gr_od = dbc.Card([
             [
                 dbc.Tab(label="Origen", tab_id="tab-v-o"),
                 dbc.Tab(label="Destino", tab_id="tab-v-d"),
-                dbc.Tab(label="Tasa de viajes", tab_id="tab-v-t"),
+                # dbc.Tab(label="Tasa de viajes", tab_id="tab-v-t"),
 
             ],
             id="tabs-v",
@@ -276,6 +277,24 @@ gr_dist = dbc.Card([
     dbc.Row(id='gr-dist')
 ], className="border order-light pt-2", body=True) # Fin Card distancia
 
+# Tasa de viajes
+# gr_tasa = dbc.Card([
+#     dbc.Row([
+#         html.H3("Tasa de generación de viajes", className="bg-info p-1 text-white rounded-top")
+#     ]),
+#     dbc.Tabs(
+#             [
+#                 dbc.Tab(label="Hábil", tab_id="tab-tasa-hab"),
+#                 dbc.Tab(label="Sábado", tab_id="tab-tasa-sab"),
+#                 dbc.Tab(label="Domingo", tab_id="tab-tasa-dom"),
+                
+#             ],
+#             id="tabs-tasa",
+#             active_tab="tab-tasa-hab",
+#     ),
+#     dbc.Row(id='gr-tasa')
+# ], className="border order-light pt-2", body=True) # Fin tasa de viajes
+
 
 
 #############
@@ -287,18 +306,21 @@ app.layout = dbc.Container([
     dcc.Store(id='store-val-inter', storage_type=sto_type),
     # Almacena los mapas    
     dcc.Store(id='store-graf-od', storage_type=sto_type),
-    # Almacena los gráficos
+    # Almacena los gráficos de la partición modal
     dcc.Store(id='store-graf-part-mod', storage_type=sto_type),
-    # Almacena los gráficos
+    # Almacena los gráficos de la hora
     dcc.Store(id='store-graf-h-i', storage_type=sto_type),
-    # Almacena los gráficos
+    # Almacena los gráficos de la distancia
     dcc.Store(id='store-graf-dist', storage_type=sto_type),
+    # Almacena los gráficos de la tasa de generación de viajes
+    # dcc.Store(id='store-graf-tasa', storage_type=sto_type),
     encabezado,
     filtros,
     gr_od,
     gr_part_mod,
     gr_h_i,
-    gr_dist    
+    gr_dist,
+    # gr_tasa    
 ], fluid=True) # Fin Container general
 # Fin apariencia
 
@@ -309,12 +331,12 @@ app.layout = dbc.Container([
 # Filtrado y agregación de los datos
 @callback(
     Output('store-val-inter', 'data'),
-    Input('dd-mes', 'value'),
+    # Input('dd-mes', 'value'),
     Input('dd-o', 'value'),
     Input('dd-d', 'value'),
     Input('dd-prop', 'value'),
     Input('button-filt-data', 'n_clicks'))
-def filtrar_datos(meses, origenes, destinos, propositos, btn_filtrar):
+def filtrar_datos(origenes, destinos, propositos, btn_filtrar): #meses
     
     if btn_filtrar is None:
         raise PreventUpdate
@@ -322,12 +344,12 @@ def filtrar_datos(meses, origenes, destinos, propositos, btn_filtrar):
     if ctx.triggered_id != 'button-filt-data':
         raise PreventUpdate
     
-    if meses is not None:
-        if not isinstance(meses,list):
-            meses=[meses]
-        test_mes = df[c_mes].isin(meses)
-    else:
-        test_mes = True
+    # if meses is not None:
+    #     if not isinstance(meses,list):
+    #         meses=[meses]
+    #     test_mes = df[c_mes].isin(meses)
+    # else:
+    #     test_mes = True
 
     if origenes is not None:
         if not isinstance(origenes,list):
@@ -357,7 +379,7 @@ def filtrar_datos(meses, origenes, destinos, propositos, btn_filtrar):
     else:
         test_prop = True
 
-    df_filt = df[(test_mes) & (test_o) & (test_d) & (test_prop)]
+    df_filt = df[(test_o) & (test_d) & (test_prop)] #(test_mes) & 
 
     # Agrupación de los datos
     df_o = df_filt.groupby(by=[c_anio, c_tipo_dia, c_o])\
@@ -382,6 +404,7 @@ def filtrar_datos(meses, origenes, destinos, propositos, btn_filtrar):
     df_part.reset_index(inplace=True) 
 
     datasets = {
+        'viajes':len(df_filt),
          'df_o': df_o.to_json(orient='split', date_format='iso'),
          'df_d': df_d.to_json(orient='split', date_format='iso'),
          'df_part': df_part.to_json(orient='split', date_format='iso'),
@@ -391,105 +414,124 @@ def filtrar_datos(meses, origenes, destinos, propositos, btn_filtrar):
     
     return json.dumps(datasets)
 
-# Mapa
-@app.callback(
-    Output('gr-v', 'children'),    
-    Input('store-graf-od', 'data'),
-    Input('tabs-v', "active_tab"),
-    Input('tabs-v-d', "active_tab"),
-    Input('button-filt-data', 'n_clicks'), prevent_initial_call=True)
-def render_mapa_od(grafs, active_tab_v, active_tab_d, btn_filtrar):
-    if btn_filtrar is None:
-        raise PreventUpdate
-        
-    if active_tab_v == "tab-v-o":
-        if active_tab_d == "tab-v-hab":
-            return dcc.Graph(figure=grafs[("Origen","lab")])
-        elif active_tab_d == "tab-v-sab":
-            return dcc.Graph(figure=grafs[("Origen","sab")])
-        elif active_tab_d == "tab-v-dom":
-            return dcc.Graph(figure=grafs[("Origen","dom")])
-    elif active_tab_v == "tab-v-d":
-        if active_tab_d == "tab-v-hab":
-            return dcc.Graph(figure=grafs[("Destino","lab")])
-        elif active_tab_d == "tab-v-sab":
-            return dcc.Graph(figure=grafs[("Destino","sab")])
-        elif active_tab_d == "tab-v-dom":
-            return dcc.Graph(figure=grafs[("Destino","dom")])
-    elif active_tab_v == "tab-v-t":
-        if active_tab_d == "tab-v-hab":
-            return dcc.Graph(figure=grafs[("Tasa","lab")])
-        elif active_tab_d == "tab-v-sab":
-            return dcc.Graph(figure=grafs[("Tasa","sab")])
-        elif active_tab_d == "tab-v-dom":
-            return dcc.Graph(figure=grafs[("Tasa","dom")])
-        
-    
-@app.callback(
-    Output('store-graf-od', 'data'),
+# Número de viajes
+@callback(
+    Output("num-viajes-filt", 'children'),
+    # Input('dd-mes', 'value'),
     Input('store-val-inter', 'data'),
-    Input('dd-v-anio', 'value'),
-    Input('in-rang', 'value'),
-    Input('button-filt-data', 'n_clicks'), prevent_initial_call=True)
-def genera_mapa_od(datos_json, anio, rango_input, btn_filtrar):
+    Input('button-filt-data', 'n_clicks'))
+def render_num_viajes(datos_json, btn_filtrar): #meses
+    
     if btn_filtrar is None:
         raise PreventUpdate
-    
-    limites = [int(x.strip()) for x in rango_input.split(",")]
-
-    label_limites = []
-    for l in range(len(limites)):
-        if l == 0:
-            label = "<{}".format(limites[l])
-        else:
-            label = "[{};{})".format(limites[l-1],limites[l])
-        label_limites.append(label)
-    label_limites.append(">={}".format(limites[-1]))
-
+        
+    if ctx.triggered_id != 'button-filt-data':
+        raise PreventUpdate
+        
     datasets = json.loads(datos_json)
+    
+    return "Se filtraron {:,.0f} registros".format(str(-(-datasets["viajes"]//1))).replace(",",".")
 
-    df_o = pd.read_json(datasets['df_o'], orient='split')
-    df_d = pd.read_json(datasets['df_d'], orient='split')
 
-    df_o['viajes_rango'] = df_o['viajes_o'].apply(lambda x: np.searchsorted(limites, x, side="right"))
-    df_d['viajes_rango'] = df_d['viajes_d'].apply(lambda x: np.searchsorted(limites, x, side="right"))
+# # Mapa
+# @app.callback(
+#     Output('gr-v', 'children'),    
+#     Input('store-graf-od', 'data'),
+#     Input('tabs-v', "active_tab"),
+#     Input('tabs-v-d', "active_tab"),
+#     Input('button-filt-data', 'n_clicks'), prevent_initial_call=True)
+# def render_mapa_od(grafs, active_tab_v, active_tab_d, btn_filtrar):
+#     if btn_filtrar is None:
+#         raise PreventUpdate
+        
+#     if active_tab_v == "tab-v-o":
+#         if active_tab_d == "tab-v-hab":
+#             return dcc.Graph(figure=grafs[("Origen","lab")])
+#         elif active_tab_d == "tab-v-sab":
+#             return dcc.Graph(figure=grafs[("Origen","sab")])
+#         elif active_tab_d == "tab-v-dom":
+#             return dcc.Graph(figure=grafs[("Origen","dom")])
+#     elif active_tab_v == "tab-v-d":
+#         if active_tab_d == "tab-v-hab":
+#             return dcc.Graph(figure=grafs[("Destino","lab")])
+#         elif active_tab_d == "tab-v-sab":
+#             return dcc.Graph(figure=grafs[("Destino","sab")])
+#         elif active_tab_d == "tab-v-dom":
+#             return dcc.Graph(figure=grafs[("Destino","dom")])
+#     elif active_tab_v == "tab-v-t":
+#         if active_tab_d == "tab-v-hab":
+#             return dcc.Graph(figure=grafs[("Tasa","lab")])
+#         elif active_tab_d == "tab-v-sab":
+#             return dcc.Graph(figure=grafs[("Tasa","sab")])
+#         elif active_tab_d == "tab-v-dom":
+#             return dcc.Graph(figure=grafs[("Tasa","dom")])
+        
+    
+# @app.callback(
+#     Output('store-graf-od', 'data'),
+#     Input('store-val-inter', 'data'),
+#     Input('dd-v-anio', 'value'),
+#     Input('in-rang', 'value'),
+#     Input('button-filt-data', 'n_clicks'), prevent_initial_call=True)
+# def genera_mapa_od(datos_json, anio, rango_input, btn_filtrar):
+#     if btn_filtrar is None:
+#         raise PreventUpdate
+    
+#     limites = [int(x.strip()) for x in rango_input.split(",")]
 
-    df_od = [df_o, df_d]
-    cols_o_d = [c_o, c_d]
-    od_aux = ["Origen","Destino"]
+#     label_limites = []
+#     for l in range(len(limites)):
+#         if l == 0:
+#             label = "<{}".format(limites[l])
+#         else:
+#             label = "[{};{})".format(limites[l-1],limites[l])
+#         label_limites.append(label)
+#     label_limites.append(">={}".format(limites[-1]))
 
-    escala_colores = [((0.0, px.colors.sequential.Plasma_r[grupo]), (1.0, px.colors.sequential.Plasma_r[grupo])) 
-                 for grupo in range(len(label_limites))]
+#     datasets = json.loads(datos_json)
 
-    figures_o_d = dict()
+#     df_o = pd.read_json(datasets['df_o'], orient='split')
+#     df_d = pd.read_json(datasets['df_d'], orient='split')
 
-    for t_dia in tipo_dia_dispo:
-        for od_temp in range(len(od_aux)):
-            df_anio_temp = df_od[od_temp][(df_od[od_temp][c_anio] == anio) &
-                                          (df_od[od_temp][c_tipo_dia]==t_dia)]
-            fig = go.Figure()
-            for grupo in range(len(label_limites)):                
-                df_trace = df_anio_temp[df_anio_temp['viajes_rango'] == grupo]    
-                fig.add_choroplethmapbox(geojson=geo_zat,
-                                         locations=df_trace[cols_o_d[od_temp]],
-                                         z=df_trace['viajes_rango'],
-                                         featureidkey="properties.ID",
-                                         showlegend=True,
-                                         name=label_limites[grupo],
-                                         colorscale=escala_colores[grupo],
-                                         showscale=False,)
+#     df_o['viajes_rango'] = df_o['viajes_o'].apply(lambda x: np.searchsorted(limites, x, side="right"))
+#     df_d['viajes_rango'] = df_d['viajes_d'].apply(lambda x: np.searchsorted(limites, x, side="right"))
 
-            fig.update_layout(
-                title=dict(text=od_aux[od_temp] + " " + str(anio)),
-                mapbox=dict(
-                    style='carto-positron',
-                    zoom=9,
-                    center={"lat": 4.657946861376187, "lon": -74.09476461866534},
-                ),
-            )
-            figures_o_d[(od_aux[od_temp],t_dia)]=fig
+#     df_od = [df_o, df_d]
+#     cols_o_d = [c_o, c_d]
+#     od_aux = ["Origen","Destino"]
 
-    return figures_o_d
+#     escala_colores = [((0.0, px.colors.sequential.Plasma_r[grupo]), (1.0, px.colors.sequential.Plasma_r[grupo])) 
+#                  for grupo in range(len(label_limites))]
+
+#     figures_o_d = dict()
+
+#     for t_dia in tipo_dia_dispo:
+#         for od_temp in range(len(od_aux)):
+#             df_anio_temp = df_od[od_temp][(df_od[od_temp][c_anio] == anio) &
+#                                           (df_od[od_temp][c_tipo_dia]==t_dia)]
+#             fig = go.Figure()
+#             for grupo in range(len(label_limites)):                
+#                 df_trace = df_anio_temp[df_anio_temp['viajes_rango'] == grupo]    
+#                 fig.add_choroplethmapbox(geojson=geo_zat,
+#                                          locations=df_trace[cols_o_d[od_temp]],
+#                                          z=df_trace['viajes_rango'],
+#                                          featureidkey="properties.ID",
+#                                          showlegend=True,
+#                                          name=label_limites[grupo],
+#                                          colorscale=escala_colores[grupo],
+#                                          showscale=False,)
+
+#             fig.update_layout(
+#                 title=dict(text=od_aux[od_temp] + " " + str(anio)),
+#                 mapbox=dict(
+#                     style='carto-positron',
+#                     zoom=9,
+#                     center={"lat": 4.657946861376187, "lon": -74.09476461866534},
+#                 ),
+#             )
+#             figures_o_d[(od_aux[od_temp],t_dia)]=fig
+
+#     return figures_o_d
 
 # Partición modal
 @app.callback(
@@ -500,12 +542,13 @@ def genera_mapa_od(datos_json, anio, rango_input, btn_filtrar):
 def render_part_modal(grafs, active_tab, btn_filtrar):
     if btn_filtrar is None:
         raise PreventUpdate
-        if active_tab == "tab-part-mod-hab":
-            return dcc.Graph(figure=grafs["lab"])
-        elif active_tab == "tab-part-mod-sab":
-            return dcc.Graph(figure=grafs["sab"])
-        elif active_tab == "tab-part-mod-dom":
-            return dcc.Graph(figure=grafs["dom"])
+        
+    if active_tab == "tab-part-mod-hab":
+        return dcc.Graph(figure=grafs["lab"])
+    elif active_tab == "tab-part-mod-sab":
+        return dcc.Graph(figure=grafs["sab"])
+    elif active_tab == "tab-part-mod-dom":
+        return dcc.Graph(figure=grafs["dom"])
     
 @app.callback(
     Output('store-graf-part-mod', 'data'),
@@ -656,10 +699,94 @@ def genera_dist(datos_json):
                     "Dist: %{customdata[2]}"
         ]))
         
+        fig.update_layout(height=400)
+        
         figures_dist[t_dia] = fig
     
     return figures_dist
 
+# # Tasa de generación de viajes
+# @app.callback(
+#     Output('gr-tasa', 'children'),    
+#     Input('store-graf-tasa', 'data'),
+#     Input('tabs-tasa', "active_tab"),
+#     Input('button-filt-data', 'n_clicks'), prevent_initial_call=True)
+# def render_tasa(grafs, active_tab,btn_filtrar):
+#     if btn_filtrar is None:
+#         raise PreventUpdate
+        
+#     if active_tab == "tab-tasa-hab":
+#         return dcc.Graph(figure=grafs["lab"])
+#     elif active_tab == "tab-tasa-sab":
+#         return dcc.Graph(figure=grafs["sab"])
+#     elif active_tab == "tab-tasa-dom":
+#         return dcc.Graph(figure=grafs["dom"])
+
+# @app.callback(
+#     Output('store-graf-tasa', 'data'),   
+#     Input('store-val-inter', 'data'))
+# def genera_tasa(datos_json):
+    
+#     datasets = json.loads(datos_json)    
+#     df_tasa = pd.read_json(datasets['df_tasa'], orient='split') 
+    
+#     figures_tasa = dict()
+    
+#     for t_dia in tipo_dia_dispo:
+    
+#         fig = px.bar(df_tasa[df_tasa[c_tipo_dia]==t_dia], x=c_rango_dist, y="viajes_dist",
+#                      color=c_anio+"2", barmode="group",
+#                      labels={c_anio+"2": "Año",
+#                              c_tipo_dia:"Día",
+#                              c_rango_dist: "Distancia",
+#                              c_modo: "Modo",
+#                              "viajes_dist": "Viajes"
+#                             },
+#                      facet_row=c_modo, facet_row_spacing=0.3,
+#                      category_orders={c_rango_dist:rangos_dist},
+#                      custom_data = [c_anio, "viajes_dist", c_rango_dist])
+
+#         # Actualiza el hover tooltip
+#         fig.update_traces(hovertemplate="<br>".join([
+#                     "Viajes: %{customdata[1]:,.0f}",
+#                     "Dist: %{customdata[2]}"
+#         ]))
+        
+#         figures_tasa[t_dia] = fig
+    
+#     return figures_dist
+
+
+@app.callback(
+    Output('div-dd-v-anios-comp', 'children'),
+    Input('check_comp', 'value'))
+def genera_dd_comp(comparar): 
+    
+    if comparar is not None:
+        return html.Div([dcc.Dropdown(options=anios_dispo,
+                     multi=False,
+                     placeholder="Año base",
+                     disabled=False,
+                     id='dd-v-anio-base'),
+        
+        dcc.Dropdown(options=anios_dispo,
+                     multi=False,
+                     placeholder="Año de comparación",
+                     disabled=False,
+                     id='dd-v-anio-comparacion')
+        ])
+    else:
+        return html.Div([dcc.Dropdown(multi=False,
+                     placeholder="Año base",
+                     disabled=True,
+                     id='dd-v-anio-base'),        
+        dcc.Dropdown(multi=False,
+                     placeholder="Año de comparación",
+                     disabled=True,
+                     id='dd-v-anio-comparacion')
+        ]) 
+    
+        
 
 # Ejecuta la app
 if __name__ == '__main__':
