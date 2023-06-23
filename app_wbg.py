@@ -45,10 +45,6 @@ c_rango_dist="rango_dist"
 # Opciones generales
 anios_dispo = sorted(df_od0[c_anio].unique())
 
-# ToDo arreglar para que pueda leer todos los meses del año
-# meses_dispo = ["oct"]
-# meses_dispo_label = ["Marzo", "Octubre"]
-# dd_meses = [{"label":x, "value":y} for x,y in zip(meses_dispo_label, meses_dispo)]
 
 tipo_dia_dispo = sorted(df_od0[c_tipo_dia].unique())
 dd_tipo_dia = [{"label":"Laborable", "value":"lab"},
@@ -72,6 +68,7 @@ rangos_dist = ["[0-0.5)", "[0.5-1)", "[1-2)", "[2-5)", "[5-10)", "[10-20)", "[20
 
 # Inicializa la app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server=app.server
 
 encabezado = dbc.Row([
     dbc.Col([
