@@ -82,6 +82,7 @@ rangos_dist = ["[0-0.5)", "[0.5-1)", "[1-2)", "[2-5)", "[5-10)", "[10-20)", "[20
 
 # Inicializa la app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = app.server
 
 encabezado = dbc.Row([    
     html.Div([
