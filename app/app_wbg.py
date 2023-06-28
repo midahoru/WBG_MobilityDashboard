@@ -82,7 +82,6 @@ rangos_dist = ["[0-0.5)", "[0.5-1)", "[1-2)", "[2-5)", "[5-10)", "[10-20)", "[20
 
 # Inicializa la app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-server = app.server
 
 encabezado = dbc.Row([    
     html.Div([
@@ -1061,4 +1060,6 @@ def activa_butt_gen_mapa(btn_filtrar, datos_json):
 if __name__ == '__main__':
     # hot-reloading: La app cambia automáticamente con cambios en el código
     # Para desactivar esto, cambiar el parám. por dev_tools_hot_reload=False
-    app.run_server(debug=True) 
+    # app.run_server(debug=True)
+    app.run_server(host='0.0.0.0', port=8050, debug=True) 
+	
